@@ -19,6 +19,7 @@ pipeline {
 
     parameters {
         string(name: 'APP_PORT', defaultValue: '8085', description: 'Port the deployed application listens on')
+        booleanParam(name: 'RUN_SELENIUM', defaultValue: true, description: 'Run the Selenium end-to-end stage (needs Chrome on the agent)')
     }
 
     options {
@@ -67,7 +68,27 @@ pipeline {
             }
         }
 
+        stage('Selenium Test') {
+            when {
+                expression { params.RUN_SELENIUM }
+            }
+            steps {
+                // Starts the app on a random port and drives headless Chrome through the user journeys.
+                run 'mvn -B test -Pselenium'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                    archiveArtifacts artifacts: 'target/screenshots/**', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Deploy') {
+            when {
+                // Never deploy a build whose tests failed or were marked unstable.
+                expression { currentBuild.currentResult == 'SUCCESS' }
+            }
             steps {
                 script {
                     if (isUnix()) {
