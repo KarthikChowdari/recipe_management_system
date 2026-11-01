@@ -1,0 +1,19 @@
+# Local Jenkins for trying the pipeline:  cd jenkins && docker compose up -d
+# UI: http://localhost:8081   (8080 is left free for the application)
+services:
+  jenkins:
+    build: .
+    image: recipe-jenkins:lts
+    container_name: recipe-jenkins
+    user: root            # needed to use the mounted Docker socket; restrict in production
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    shm_size: 512m        # headless Chrome needs more than the 64 MB default /dev/shm
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:
