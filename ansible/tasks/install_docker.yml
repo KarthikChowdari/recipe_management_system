@@ -1,0 +1,55 @@
+---
+- name: Install Docker engine (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install dnf plugins (RHEL family)
+  ansible.builtin.dnf:
+    name: dnf-plugins-core
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Add the Docker CE repository (RHEL family)
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: "0644"
+  when: ansible_os_family == "RedHat"
+
+- name: Install Docker CE (RHEL family)
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Enable and start Docker
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Allow the SSH deploy user to run docker without sudo
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+  when: ansible_user is defined and ansible_user != "root" and ansible_connection | default('ssh') != "local"
+
+- name: Check Docker version
+  ansible.builtin.command: docker version --format "{{ '{{' }}.Server.Version{{ '}}' }}"
+  register: docker_version
+  changed_when: false
+
+- name: Show Docker version
+  ansible.builtin.debug:
+    msg: "Docker server {{ docker_version.stdout }}"

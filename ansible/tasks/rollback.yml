@@ -1,0 +1,55 @@
+---
+# Manual rollback: reactivates `rollback_version` or, if empty, the previous stable release.
+#   ansible-playbook playbook.yml --tags rollback
+#   ansible-playbook rollback.yml -e rollback_version=41
+- name: Read release markers
+  ansible.builtin.slurp:
+    src: "{{ app_releases_dir }}/{{ item }}"
+  loop: [stable, previous]
+  register: release_markers
+  failed_when: false
+
+- name: Work out the rollback target
+  ansible.builtin.set_fact:
+    current_stable: "{{ (release_markers.results[0].content | b64decode | trim) if release_markers.results[0].content is defined else '' }}"
+    rollback_target: >-
+      {{ rollback_version if (rollback_version | default('') | length > 0)
+         else ((release_markers.results[1].content | b64decode | trim) if release_markers.results[1].content is defined else '') }}
+
+- name: Make sure there is a release to roll back to
+  ansible.builtin.assert:
+    that:
+      - rollback_target | trim | length > 0
+    fail_msg: "No previous release recorded in {{ app_releases_dir }}/previous; pass -e rollback_version=<tag>."
+
+- name: Rollback plan
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}: {{ current_stable | default('unknown', true) }} -> {{ rollback_target | trim }}"
+
+- name: Activate the rollback release
+  ansible.builtin.import_tasks: activate_release.yml
+  vars:
+    release_version: "{{ rollback_target | trim }}"
+    release_image: "{{ app_image_repo }}:{{ rollback_target | trim }}"
+
+- name: Record the release we rolled back from
+  ansible.builtin.copy:
+    content: "{{ current_stable }}\n"
+    dest: "{{ app_releases_dir }}/previous"
+    mode: "0644"
+  when: current_stable | length > 0 and current_stable != (rollback_target | trim)
+
+- name: Mark the rollback release as stable
+  ansible.builtin.copy:
+    content: "{{ rollback_target | trim }}\n"
+    dest: "{{ app_releases_dir }}/stable"
+    mode: "0644"
+  register: rollback_marker
+
+- name: Append rollback to release history
+  ansible.builtin.lineinfile:
+    path: "{{ app_releases_dir }}/history.log"
+    line: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }} ROLLBACK {{ current_stable | default('-', true) }} -> {{ rollback_target | trim }} OK"
+    create: true
+    mode: "0644"
+  when: rollback_marker.changed  # noqa: no-handler - history must be written in order

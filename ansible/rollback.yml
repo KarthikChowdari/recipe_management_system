@@ -1,0 +1,14 @@
+---
+# Stand-alone rollback playbook.
+#   ansible-playbook rollback.yml                         # previous stable release on every host
+#   ansible-playbook rollback.yml -e rollback_version=41  # a specific release
+#   ansible-playbook rollback.yml --limit prod-app-01     # a single host
+- name: Roll back the Recipe Management System
+  hosts: "{{ target_hosts | default('recipe_app_servers') }}"
+  become: true
+  serial: "{{ deploy_serial | default(1) }}"
+  max_fail_percentage: 0
+
+  tasks:
+    - name: Roll back to the previous or requested release
+      ansible.builtin.import_tasks: tasks/rollback.yml

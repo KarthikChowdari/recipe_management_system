@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Recipe form')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+<main class="container narrow">
+    <h1 id="form-heading" th:text="${recipeId == null} ? 'New recipe' : 'Edit recipe'">New recipe</h1>
+
+    <form id="recipe-form" class="card form"
+          th:action="${recipeId == null} ? @{/recipes} : @{/recipes/{id}(id=${recipeId})}"
+          th:object="${recipeForm}" method="post" novalidate>
+        <input type="hidden" th:field="*{version}">
+
+        <div class="alert alert-error" id="form-errors" th:if="${#fields.hasErrors('*')}">
+            Please correct the highlighted fields.
+        </div>
+
+        <label for="title">Title *</label>
+        <input type="text" th:field="*{title}" th:errorclass="invalid" maxlength="150">
+        <p class="field-error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></p>
+
+        <label for="description">Description</label>
+        <textarea th:field="*{description}" rows="2" maxlength="1000"></textarea>
+        <p class="field-error" th:if="${#fields.hasErrors('description')}" th:errors="*{description}"></p>
+
+        <div class="grid-2">
+            <div>
+                <label for="cuisine">Cuisine *</label>
+                <input type="text" th:field="*{cuisine}" th:errorclass="invalid" maxlength="60"
+                       placeholder="e.g. Italian">
+                <p class="field-error" th:if="${#fields.hasErrors('cuisine')}" th:errors="*{cuisine}"></p>
+            </div>
+            <div>
+                <label for="category">Category *</label>
+                <input type="text" th:field="*{category}" th:errorclass="invalid" maxlength="60"
+                       placeholder="e.g. Main Course">
+                <p class="field-error" th:if="${#fields.hasErrors('category')}" th:errors="*{category}"></p>
+            </div>
+        </div>
+
+        <label for="ingredients">Ingredients * <span class="muted small">(one per line)</span></label>
+        <textarea th:field="*{ingredients}" th:errorclass="invalid" rows="6"></textarea>
+        <p class="field-error" th:if="${#fields.hasErrors('ingredients')}" th:errors="*{ingredients}"></p>
+
+        <label for="instructions">Instructions *</label>
+        <textarea th:field="*{instructions}" th:errorclass="invalid" rows="6"></textarea>
+        <p class="field-error" th:if="${#fields.hasErrors('instructions')}" th:errors="*{instructions}"></p>
+
+        <div class="grid-3">
+            <div>
+                <label for="prepMinutes">Prep (min)</label>
+                <input type="number" th:field="*{prepMinutes}" min="0" max="1440">
+                <p class="field-error" th:if="${#fields.hasErrors('prepMinutes')}" th:errors="*{prepMinutes}"></p>
+            </div>
+            <div>
+                <label for="cookMinutes">Cook (min)</label>
+                <input type="number" th:field="*{cookMinutes}" min="0" max="1440">
+                <p class="field-error" th:if="${#fields.hasErrors('cookMinutes')}" th:errors="*{cookMinutes}"></p>
+            </div>
+            <div>
+                <label for="servings">Servings</label>
+                <input type="number" th:field="*{servings}" min="1" max="100">
+                <p class="field-error" th:if="${#fields.hasErrors('servings')}" th:errors="*{servings}"></p>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="save-button" type="submit" class="btn btn-primary">Save</button>
+            <a id="cancel-link" class="btn"
+               th:href="${recipeId == null} ? @{/recipes} : @{/recipes/{id}(id=${recipeId})}">Cancel</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>

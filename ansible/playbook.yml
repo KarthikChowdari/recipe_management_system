@@ -1,0 +1,85 @@
+---
+# Recipe Management System - provisioning and deployment
+#
+# Full run (provision + deploy):
+#   ansible-playbook playbook.yml -e app_version=42
+# Only deploy a new release (servers already provisioned):
+#   ansible-playbook playbook.yml --tags deploy -e app_version=43
+# Health check only:
+#   ansible-playbook playbook.yml --tags health
+# Roll back to the previous stable release (or a specific one):
+#   ansible-playbook playbook.yml --tags rollback [-e rollback_version=41]
+# Target another group, e.g. the local machine:
+#   ansible-playbook playbook.yml -e target_hosts=local -e app_version=42
+#
+# Tags: provision (jdk, docker, config), deploy, health, rollback, cleanup
+- name: Provision and deploy the Recipe Management System
+  hosts: "{{ target_hosts | default('recipe_app_servers') }}"
+  become: true
+  # Roll out one host at a time; stop the whole rollout as soon as one host fails.
+  serial: "{{ deploy_serial | default(1) }}"
+  max_fail_percentage: 0
+
+  pre_tasks:
+    - name: Validate release variables
+      ansible.builtin.assert:
+        that:
+          - app_image_repo | length > 0
+          - app_version | string | length > 0
+          - app_port | int > 0
+        fail_msg: "Set app_image_repo, app_version and app_port (see group_vars/all.yml)."
+      tags: [always]
+
+    - name: Warn about mutable tags
+      ansible.builtin.debug:
+        msg: >-
+          app_version is 'latest'. Deploy immutable build numbers (-e app_version=<BUILD_NUMBER>)
+          so that rollbacks have a concrete previous release to return to.
+      when: app_version | string == 'latest'
+      tags: [always]
+
+  tasks:
+    - name: Install JDK 21
+      ansible.builtin.import_tasks: tasks/install_jdk.yml
+      when: install_jdk | bool
+      tags: [provision, jdk]
+
+    - name: Install Docker
+      ansible.builtin.import_tasks: tasks/install_docker.yml
+      when: install_docker | bool
+      tags: [provision, docker]
+
+    - name: Application user, folders, environment and systemd service
+      ansible.builtin.import_tasks: tasks/setup_app.yml
+      tags: [provision, config]
+
+    - name: Deploy release with health check and automatic rollback
+      ansible.builtin.import_tasks: tasks/deploy.yml
+      tags: [deploy]
+
+    - name: Remove old release images
+      ansible.builtin.import_tasks: tasks/prune_images.yml
+      tags: [deploy, cleanup]
+
+    - name: Stand-alone health check
+      ansible.builtin.import_tasks: tasks/health_check.yml
+      tags: [health, never]
+
+    - name: Manual rollback
+      ansible.builtin.import_tasks: tasks/rollback.yml
+      tags: [rollback, never]
+
+  post_tasks:
+    - name: Read the active release
+      ansible.builtin.command: cat {{ app_releases_dir }}/stable
+      register: active_release
+      changed_when: false
+      failed_when: false
+      tags: [always]
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }} ({{ app_environment }}) serves release
+          {{ active_release.stdout | default('none', true) }} on port {{ app_port }}
+      tags: [always]

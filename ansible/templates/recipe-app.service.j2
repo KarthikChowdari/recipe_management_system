@@ -1,0 +1,27 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Recipe Management System ({{ app_environment }})
+Documentation=https://github.com/your-org/recipe-management-system
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile={{ app_config_dir }}/release.env
+ExecStartPre=-/usr/bin/docker rm -f {{ app_name }}
+ExecStart=/usr/bin/docker run --rm --name {{ app_name }} \
+    -p ${APP_PORT}:{{ app_container_port }} \
+    --env-file {{ app_config_dir }}/app.env \
+    --label app.version=${APP_VERSION} \
+    --health-interval 5s --health-start-period 120s \
+    --log-driver json-file --log-opt max-size=20m --log-opt max-file=5 \
+    ${APP_IMAGE}
+ExecStop=/usr/bin/docker stop -t 30 {{ app_name }}
+Restart=always
+RestartSec=10
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

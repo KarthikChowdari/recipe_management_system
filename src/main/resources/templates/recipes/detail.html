@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${recipe.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <div class="page-header">
+        <div>
+            <h1 id="recipe-title" th:text="${recipe.title}">Title</h1>
+            <p class="muted">
+                <span id="recipe-status"><span th:replace="~{fragments/layout :: statusBadge(${recipe.status})}"></span></span>
+                by <strong id="recipe-author" th:text="${recipe.createdBy}">author</strong>
+                · updated <span th:text="${#temporals.format(recipe.updatedAt, 'yyyy-MM-dd HH:mm')}">date</span>
+            </p>
+        </div>
+        <div class="actions">
+            <a id="edit-button" class="btn" th:if="${canEdit}"
+               th:href="@{/recipes/{id}/edit(id=${recipe.id})}">Edit</a>
+            <form th:if="${canDelete}" th:action="@{/recipes/{id}/delete(id=${recipe.id})}" method="post"
+                  class="inline" onsubmit="return confirm('Delete this recipe permanently?');">
+                <button id="delete-button" type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <p id="recipe-description" class="lead" th:if="${recipe.description}" th:text="${recipe.description}"></p>
+
+    <dl class="facts">
+        <div><dt>Cuisine</dt><dd id="recipe-cuisine" th:text="${recipe.cuisine}">Cuisine</dd></div>
+        <div><dt>Category</dt><dd id="recipe-category" th:text="${recipe.category}">Category</dd></div>
+        <div><dt>Prep</dt><dd th:text="${recipe.prepMinutes != null} ? ${recipe.prepMinutes} + ' min' : '—'">—</dd></div>
+        <div><dt>Cook</dt><dd th:text="${recipe.cookMinutes != null} ? ${recipe.cookMinutes} + ' min' : '—'">—</dd></div>
+        <div><dt>Servings</dt><dd id="recipe-servings" th:text="${recipe.servings ?: '—'}">—</dd></div>
+    </dl>
+
+    <section id="workflow-panel" class="card workflow" th:unless="${#lists.isEmpty(allowedActions)}">
+        <h2>Review workflow</h2>
+        <form id="transition-form" th:action="@{/recipes/{id}/transition(id=${recipe.id})}" method="post">
+            <label for="transition-comment">Comment <span class="muted small">(optional)</span></label>
+            <input id="transition-comment" name="comment" type="text" maxlength="500"
+                   placeholder="e.g. Looks great / please add cooking times">
+            <div class="actions">
+                <button th:each="a : ${allowedActions}" type="submit" name="action" th:value="${a.name()}"
+                        th:id="'action-' + ${a.name()}" th:text="${a.label}"
+                        th:classappend="${a.name() == 'APPROVE' ? 'btn-success' : (a.name() == 'SUBMIT' ? 'btn-primary' : '')}"
+                        class="btn">Action</button>
+            </div>
+        </form>
+    </section>
+
+    <div class="grid-2">
+        <section class="card">
+            <h2>Ingredients</h2>
+            <pre id="recipe-ingredients" class="prose" th:text="${recipe.ingredients}"></pre>
+        </section>
+        <section class="card">
+            <h2>Instructions</h2>
+            <pre id="recipe-instructions" class="prose" th:text="${recipe.instructions}"></pre>
+        </section>
+    </div>
+
+    <section class="card history">
+        <h2>Status history</h2>
+        <p id="no-history" class="muted" th:if="${#lists.isEmpty(history)}">No status changes yet.</p>
+        <table id="history-table" class="table" th:unless="${#lists.isEmpty(history)}">
+            <thead><tr><th>When</th><th>Action</th><th>Change</th><th>By</th><th>Comment</th></tr></thead>
+            <tbody>
+            <tr class="history-row" th:each="h : ${history}">
+                <td th:text="${#temporals.format(h.changedAt, 'yyyy-MM-dd HH:mm')}">date</td>
+                <td class="history-action" th:text="${h.action.label}">Action</td>
+                <td><span th:text="${h.fromStatus?.label}">From</span> &rarr; <span th:text="${h.toStatus.label}">To</span></td>
+                <td th:text="${h.changedBy}">user</td>
+                <td th:text="${h.comment ?: ''}">comment</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

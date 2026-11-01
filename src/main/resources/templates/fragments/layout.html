@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · Recipe Manager'">Recipe Manager</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+
+<header th:fragment="nav" class="topbar">
+    <a class="brand" th:href="@{/recipes}">🍲 Recipe Manager</a>
+    <nav sec:authorize="isAuthenticated()">
+        <a id="nav-recipes" th:href="@{/recipes}">Recipes</a>
+        <a id="nav-new" th:href="@{/recipes/new}" sec:authorize="hasAnyRole('AUTHOR','ADMIN')">New recipe</a>
+        <a id="nav-dashboard" th:href="@{/dashboard}">Dashboard</a>
+    </nav>
+    <div class="user" sec:authorize="isAuthenticated()">
+        <span id="current-user" sec:authentication="name">user</span>
+        <form th:action="@{/logout}" method="post" class="inline">
+            <button id="logout-button" type="submit" class="btn btn-link">Log out</button>
+        </form>
+    </div>
+</header>
+
+<div th:fragment="flash">
+    <div id="flash-success" class="alert alert-success" th:if="${success}" th:text="${success}"></div>
+    <div id="flash-error" class="alert alert-error" th:if="${error}" th:text="${error}"></div>
+</div>
+
+<span th:fragment="statusBadge(status)" class="badge"
+      th:classappend="${'badge-' + #strings.toLowerCase(status.name())}"
+      th:text="${status.label}">Draft</span>
+
+</body>
+</html>
