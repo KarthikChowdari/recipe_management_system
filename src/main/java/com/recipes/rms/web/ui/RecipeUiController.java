@@ -1,7 +1,11 @@
 package com.recipes.rms.web.ui;
 
 import com.recipes.rms.domain.Recipe;
+import com.recipes.rms.domain.RecipeStatus;
+import com.recipes.rms.domain.WorkflowAction;
+import com.recipes.rms.repository.RecipeSearchCriteria;
 import com.recipes.rms.service.Actor;
+import com.recipes.rms.service.ConflictException;
 import com.recipes.rms.service.OperationNotPermittedException;
 import com.recipes.rms.service.RecipeInput;
 import com.recipes.rms.service.RecipeService;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -33,9 +38,13 @@ public class RecipeUiController {
     }
 
     @GetMapping
-    public String list(@PageableDefault(size = 10, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable,
+    public String list(@ModelAttribute("criteria") RecipeSearchCriteria criteria,
+                       @PageableDefault(size = 10, sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable,
                        Model model) {
-        model.addAttribute("page", recipeService.findAll(pageable));
+        model.addAttribute("page", recipeService.search(criteria, pageable));
+        model.addAttribute("cuisines", recipeService.cuisines());
+        model.addAttribute("categories", recipeService.categories());
+        model.addAttribute("statuses", RecipeStatus.values());
         return "recipes/list";
     }
 
@@ -66,7 +75,23 @@ public class RecipeUiController {
         model.addAttribute("recipe", recipe);
         model.addAttribute("canEdit", recipeService.canEdit(recipe, actor));
         model.addAttribute("canDelete", recipeService.canDelete(actor));
+        model.addAttribute("allowedActions", recipeService.allowedActions(recipe, actor));
+        model.addAttribute("history", recipeService.history(id));
         return "recipes/detail";
+    }
+
+    @PostMapping("/{id}/transition")
+    public String transition(@PathVariable Long id, @RequestParam WorkflowAction action,
+                             @RequestParam(required = false) String comment,
+                             Authentication auth, RedirectAttributes redirect) {
+        try {
+            Recipe recipe = recipeService.transition(id, action, comment, Actor.from(auth));
+            redirect.addFlashAttribute("success", action.getLabel() + " done. Status is now "
+                    + recipe.getStatus().getLabel() + ".");
+        } catch (ConflictException | OperationNotPermittedException | IllegalArgumentException ex) {
+            redirect.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/recipes/" + id;
     }
 
     @GetMapping("/{id}/edit")

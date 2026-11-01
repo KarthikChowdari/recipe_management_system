@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head(${recipeId == null ? 'New recipe' : 'Edit recipe'})}"></head>
+<head th:replace="~{fragments/layout :: head('Recipe form')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav}"></header>
 <main class="container narrow">
