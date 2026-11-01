@@ -123,3 +123,18 @@ input:focus, select:focus, textarea:focus { outline: 2px solid #fdba74; border-c
 /* ---- Error ---- */
 .error-card { text-align: center; }
 .error-card h1 { font-size: 3rem; color: var(--primary); }
+
+/* ---- Workflow, history, dashboard ---- */
+.workflow, .history { margin: 1rem 0; }
+.stat { text-align: center; }
+.stat .value { font-size: 2.2rem; font-weight: 700; line-height: 1.1; }
+.stat .label { color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; }
+.stat-draft .value { color: #475467; }
+.stat-pending_review .value { color: #b54708; }
+.stat-published .value { color: #067647; }
+.bar-list { list-style: none; padding: 0; margin: 0; }
+.bar-list li { margin-bottom: .6rem; }
+.bar-list .bar-label { display: flex; justify-content: space-between; font-size: .9rem; }
+.bar-list .bar { height: 8px; background: #f1f3f5; border-radius: 4px; overflow: hidden; }
+.bar-list .bar span { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+.section-gap { margin-top: 1rem; }

@@ -13,6 +13,7 @@
     <nav sec:authorize="isAuthenticated()">
         <a id="nav-recipes" th:href="@{/recipes}">Recipes</a>
         <a id="nav-new" th:href="@{/recipes/new}" sec:authorize="hasAnyRole('AUTHOR','ADMIN')">New recipe</a>
+        <a id="nav-dashboard" th:href="@{/dashboard}">Dashboard</a>
     </nav>
     <div class="user" sec:authorize="isAuthenticated()">
         <span id="current-user" sec:authentication="name">user</span>

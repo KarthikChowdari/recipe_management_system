@@ -35,6 +35,21 @@
         <div><dt>Servings</dt><dd id="recipe-servings" th:text="${recipe.servings ?: '—'}">—</dd></div>
     </dl>
 
+    <section id="workflow-panel" class="card workflow" th:unless="${#lists.isEmpty(allowedActions)}">
+        <h2>Review workflow</h2>
+        <form id="transition-form" th:action="@{/recipes/{id}/transition(id=${recipe.id})}" method="post">
+            <label for="transition-comment">Comment <span class="muted small">(optional)</span></label>
+            <input id="transition-comment" name="comment" type="text" maxlength="500"
+                   placeholder="e.g. Looks great / please add cooking times">
+            <div class="actions">
+                <button th:each="a : ${allowedActions}" type="submit" name="action" th:value="${a.name()}"
+                        th:id="'action-' + ${a.name()}" th:text="${a.label}"
+                        th:classappend="${a.name() == 'APPROVE' ? 'btn-success' : (a.name() == 'SUBMIT' ? 'btn-primary' : '')}"
+                        class="btn">Action</button>
+            </div>
+        </form>
+    </section>
+
     <div class="grid-2">
         <section class="card">
             <h2>Ingredients</h2>
@@ -45,6 +60,23 @@
             <pre id="recipe-instructions" class="prose" th:text="${recipe.instructions}"></pre>
         </section>
     </div>
+
+    <section class="card history">
+        <h2>Status history</h2>
+        <p id="no-history" class="muted" th:if="${#lists.isEmpty(history)}">No status changes yet.</p>
+        <table id="history-table" class="table" th:unless="${#lists.isEmpty(history)}">
+            <thead><tr><th>When</th><th>Action</th><th>Change</th><th>By</th><th>Comment</th></tr></thead>
+            <tbody>
+            <tr class="history-row" th:each="h : ${history}">
+                <td th:text="${#temporals.format(h.changedAt, 'yyyy-MM-dd HH:mm')}">date</td>
+                <td class="history-action" th:text="${h.action.label}">Action</td>
+                <td><span th:text="${h.fromStatus?.label}">From</span> &rarr; <span th:text="${h.toStatus.label}">To</span></td>
+                <td th:text="${h.changedBy}">user</td>
+                <td th:text="${h.comment ?: ''}">comment</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
 </main>
 </body>
 </html>
