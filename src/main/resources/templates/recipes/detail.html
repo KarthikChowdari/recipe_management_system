@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${recipe.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <div class="page-header">
+        <div>
+            <h1 id="recipe-title" th:text="${recipe.title}">Title</h1>
+            <p class="muted">
+                <span id="recipe-status"><span th:replace="~{fragments/layout :: statusBadge(${recipe.status})}"></span></span>
+                by <strong id="recipe-author" th:text="${recipe.createdBy}">author</strong>
+                · updated <span th:text="${#temporals.format(recipe.updatedAt, 'yyyy-MM-dd HH:mm')}">date</span>
+            </p>
+        </div>
+        <div class="actions">
+            <a id="edit-button" class="btn" th:if="${canEdit}"
+               th:href="@{/recipes/{id}/edit(id=${recipe.id})}">Edit</a>
+            <form th:if="${canDelete}" th:action="@{/recipes/{id}/delete(id=${recipe.id})}" method="post"
+                  class="inline" onsubmit="return confirm('Delete this recipe permanently?');">
+                <button id="delete-button" type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <p id="recipe-description" class="lead" th:if="${recipe.description}" th:text="${recipe.description}"></p>
+
+    <dl class="facts">
+        <div><dt>Cuisine</dt><dd id="recipe-cuisine" th:text="${recipe.cuisine}">Cuisine</dd></div>
+        <div><dt>Category</dt><dd id="recipe-category" th:text="${recipe.category}">Category</dd></div>
+        <div><dt>Prep</dt><dd th:text="${recipe.prepMinutes != null} ? ${recipe.prepMinutes} + ' min' : '—'">—</dd></div>
+        <div><dt>Cook</dt><dd th:text="${recipe.cookMinutes != null} ? ${recipe.cookMinutes} + ' min' : '—'">—</dd></div>
+        <div><dt>Servings</dt><dd id="recipe-servings" th:text="${recipe.servings ?: '—'}">—</dd></div>
+    </dl>
+
+    <div class="grid-2">
+        <section class="card">
+            <h2>Ingredients</h2>
+            <pre id="recipe-ingredients" class="prose" th:text="${recipe.ingredients}"></pre>
+        </section>
+        <section class="card">
+            <h2>Instructions</h2>
+            <pre id="recipe-instructions" class="prose" th:text="${recipe.instructions}"></pre>
+        </section>
+    </div>
+</main>
+</body>
+</html>

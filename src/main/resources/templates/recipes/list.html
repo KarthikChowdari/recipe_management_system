@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Recipes')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <div class="page-header">
+        <h1>Recipes</h1>
+        <span id="result-count" class="muted" th:text="${page.totalElements} + ' recipe(s)'">0 recipe(s)</span>
+    </div>
+
+    <p id="no-results" class="empty" th:if="${page.empty}">No recipes found.</p>
+
+    <table id="recipe-table" class="table" th:unless="${page.empty}">
+        <thead>
+        <tr><th>Title</th><th>Cuisine</th><th>Category</th><th>Status</th><th>Author</th><th>Updated</th></tr>
+        </thead>
+        <tbody>
+        <tr class="recipe-row" th:each="r : ${page.content}">
+            <td class="recipe-title"><a th:href="@{/recipes/{id}(id=${r.id})}" th:text="${r.title}">Title</a></td>
+            <td class="recipe-cuisine" th:text="${r.cuisine}">Cuisine</td>
+            <td class="recipe-category" th:text="${r.category}">Category</td>
+            <td class="recipe-status"><span th:replace="~{fragments/layout :: statusBadge(${r.status})}"></span></td>
+            <td th:text="${r.createdBy}">author</td>
+            <td th:text="${#temporals.format(r.updatedAt, 'yyyy-MM-dd HH:mm')}">date</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="pager" th:if="${page.totalPages > 1}">
+        <a th:if="${page.hasPrevious()}" th:href="@{/recipes(page=${page.number - 1})}">&laquo; Previous</a>
+        <span th:text="'Page ' + ${page.number + 1} + ' of ' + ${page.totalPages}">Page 1 of 1</span>
+        <a th:if="${page.hasNext()}" th:href="@{/recipes(page=${page.number + 1})}">Next &raquo;</a>
+    </div>
+</main>
+</body>
+</html>
