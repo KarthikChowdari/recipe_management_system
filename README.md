@@ -59,9 +59,12 @@ End-to-end report: [`FINAL_PROJECT_REPORT.md`](FINAL_PROJECT_REPORT.md).
 | `src/`                    | Application code, templates, seed data, tests         |
 | `jenkins/`                | Jenkins installation & job setup guides               |
 | `Jenkinsfile`             | Declarative CI/CD pipeline                            |
+| `scripts/`                | Deploy + health-check scripts (bash and PowerShell)   |
 | `Dockerfile`, `DOCKER.md` | Container image and lifecycle guide                   |
+| `docker-compose.yml`      | App + MySQL stack                                     |
 | `ansible/`                | Inventory, playbook, templates, rollback              |
 | `ROLLBACK.md`             | Rollback procedures                                   |
+| `FINAL_PROJECT_REPORT.md` | Architecture, pipeline, setup, troubleshooting, roadmap |
 
 ---
 
