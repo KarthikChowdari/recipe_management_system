@@ -1,0 +1,31 @@
+---
+# Verifies the running release. Expects `release_image` when called after an activation.
+- name: Wait for the health endpoint to report UP
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_port }}{{ health_check_path }}"
+    return_content: true
+    status_code: 200
+  register: app_health
+  until: app_health.status == 200 and app_health.content is search('"status"\s*:\s*"UP"')
+  retries: "{{ health_check_retries }}"
+  delay: "{{ health_check_delay }}"
+  changed_when: false
+
+- name: Verify the home route responds
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_port }}{{ health_check_home_path }}"
+    status_code: 200
+  changed_when: false
+
+- name: Read the image of the running container
+  ansible.builtin.command: >-
+    docker inspect --format '{% raw %}{{.Config.Image}}{% endraw %}' {{ app_name }}
+  register: running_image
+  changed_when: false
+
+- name: Verify the expected release is the one running
+  ansible.builtin.assert:
+    that: running_image.stdout == release_image
+    fail_msg: "Running {{ running_image.stdout }} but expected {{ release_image }}"
+    success_msg: "{{ release_image }} is running and healthy"
+  when: release_image is defined
