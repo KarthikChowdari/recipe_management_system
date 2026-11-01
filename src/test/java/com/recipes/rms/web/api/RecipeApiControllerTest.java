@@ -9,6 +9,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -109,5 +112,77 @@ class RecipeApiControllerTest {
                 .andExpect(status().isNoContent());
         mvc.perform(get("/api/recipes/{id}", id).with(httpBasic("admin", "admin123")))
                 .andExpect(status().isNotFound());
+    }
+
+    void transition(long id, String action, String user, String password, int expectedStatus) throws Exception {
+        mvc.perform(post("/api/recipes/{id}/transitions", id).with(httpBasic(user, password))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"action\":\"" + action + "\"}"))
+                .andExpect(status().is(expectedStatus));
+    }
+
+    @Test
+    void searchFiltersByCuisineStatusAndTitle() throws Exception {
+        mvc.perform(get("/api/recipes").param("cuisine", "italian").param("status", "PUBLISHED")
+                        .with(httpBasic("author", "author123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].cuisine", everyItem(equalTo("Italian"))))
+                .andExpect(jsonPath("$.content[*].status", everyItem(equalTo("PUBLISHED"))))
+                .andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(2)));
+
+        mvc.perform(get("/api/recipes").param("title", "carbon").with(httpBasic("author", "author123")))
+                .andExpect(jsonPath("$.content[0].title").value("Spaghetti Carbonara"));
+    }
+
+    @Test
+    void invalidStatusFilterIs400() throws Exception {
+        mvc.perform(get("/api/recipes").param("status", "BOGUS").with(httpBasic("author", "author123")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void fullReviewWorkflowWithHistory() throws Exception {
+        long id = createRecipe("Khao Soi", "author", "author123");
+
+        transition(id, "APPROVE", "reviewer", "reviewer123", 409);   // cannot approve a draft
+        transition(id, "SUBMIT", "reviewer", "reviewer123", 403);    // reviewer is not the owner/author
+        transition(id, "SUBMIT", "author", "author123", 200);
+        transition(id, "APPROVE", "author", "author123", 403);       // authors cannot approve
+        transition(id, "REJECT", "reviewer", "reviewer123", 200);
+        transition(id, "SUBMIT", "author", "author123", 200);
+        transition(id, "APPROVE", "reviewer", "reviewer123", 200);
+
+        mvc.perform(get("/api/recipes/{id}", id).with(httpBasic("author", "author123")))
+                .andExpect(jsonPath("$.status").value("PUBLISHED"));
+        mvc.perform(get("/api/recipes/{id}/history", id).with(httpBasic("author", "author123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[0].action").value("APPROVE"))
+                .andExpect(jsonPath("$[0].changedBy").value("reviewer"));
+
+        // published recipes are locked for their author
+        mvc.perform(put("/api/recipes/{id}", id).with(httpBasic("author", "author123"))
+                        .contentType(MediaType.APPLICATION_JSON).content(RECIPE_JSON.formatted("Too late")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void transitionWithoutActionIs400() throws Exception {
+        long id = createRecipe("Larb", "author", "author123");
+        mvc.perform(post("/api/recipes/{id}/transitions", id).with(httpBasic("author", "author123"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.action").exists());
+    }
+
+    @Test
+    void dashboardReturnsCountsForEveryStatus() throws Exception {
+        mvc.perform(get("/api/dashboard").with(httpBasic("reviewer", "reviewer123")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalRecipes", greaterThanOrEqualTo(12)))
+                .andExpect(jsonPath("$.countByStatus.DRAFT").exists())
+                .andExpect(jsonPath("$.countByStatus.PENDING_REVIEW").exists())
+                .andExpect(jsonPath("$.countByStatus.PUBLISHED").exists())
+                .andExpect(jsonPath("$.topCategories[0].name").value("Main Course"))
+                .andExpect(jsonPath("$.topCuisines.length()").value(5));
     }
 }
