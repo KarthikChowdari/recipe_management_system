@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Error')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+<main class="container narrow">
+    <section class="card error-card">
+        <h1 id="error-status" th:text="${status} ?: 'Error'">Error</h1>
+        <h2 th:text="${error} ?: 'Something went wrong'">Something went wrong</h2>
+        <p id="error-message" th:if="${message}" th:text="${message}"></p>
+        <a class="btn" th:href="@{/recipes}">Back to recipes</a>
+    </section>
+</main>
+</body>
+</html>

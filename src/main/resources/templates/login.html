@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sign in')}"></head>
+<body class="login-page">
+<main class="card login-card">
+    <h1>🍲 Recipe Manager</h1>
+    <p class="muted">Sign in to continue</p>
+
+    <div id="login-error" class="alert alert-error" th:if="${param.error}">Invalid username or password.</div>
+    <div id="logout-message" class="alert alert-success" th:if="${param.logout}">You have been signed out.</div>
+
+    <form th:action="@{/login}" method="post">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+        <button id="login-button" type="submit" class="btn btn-primary btn-block">Sign in</button>
+    </form>
+
+    <p class="muted small">Demo users: author, reviewer, admin (see README for passwords)</p>
+</main>
+</body>
+</html>
