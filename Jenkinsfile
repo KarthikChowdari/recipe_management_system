@@ -78,7 +78,8 @@ pipeline {
             }
             post {
                 always {
-                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml'
+                    // Unit-test XML from the previous stage is already published; pick up only the browser tests.
+                    junit allowEmptyResults: true, testResults: 'target/surefire-reports/TEST-com.recipes.rms.selenium.*.xml'
                     archiveArtifacts artifacts: 'target/screenshots/**', allowEmptyArchive: true
                 }
             }
