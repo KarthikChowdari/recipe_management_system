@@ -1,0 +1,13 @@
+# Activate with SPRING_PROFILES_ACTIVE=mysql
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/recipes?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:recipes}
+    password: ${DB_PASSWORD:recipes}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+  sql:
+    init:
+      # Seed only on first boot against an empty schema: run once with SEED_DATA=always, then leave as never
+      mode: ${SEED_DATA:never}
