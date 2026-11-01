@@ -1,0 +1,40 @@
+# Application + MySQL for a production-like local stack:
+#   docker compose up -d --build
+#   open http://localhost:8080
+# For the default in-memory H2 setup just use `docker run` (see DOCKER.md).
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: recipe-mysql
+    environment:
+      MYSQL_DATABASE: recipes
+      MYSQL_USER: recipes
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-recipes}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    image: recipe-management-system:compose
+    container_name: recipe-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: mysql
+      DB_URL: jdbc:mysql://mysql:3306/recipes?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: recipes
+      DB_PASSWORD: ${MYSQL_PASSWORD:-recipes}
+      SEED_DATA: ${SEED_DATA:-never}   # set to "always" on the very first start to load sample recipes
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  mysql_data:

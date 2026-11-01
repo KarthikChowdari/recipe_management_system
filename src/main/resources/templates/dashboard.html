@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+<main class="container">
+    <div class="page-header">
+        <h1>Dashboard</h1>
+        <span class="muted"><span id="published-percent" th:text="${summary.publishedPercent()}">0</span>% published</span>
+    </div>
+
+    <div class="grid-4">
+        <div class="card stat">
+            <div id="total-recipes" class="value" th:text="${summary.totalRecipes}">0</div>
+            <div class="label">Total recipes</div>
+        </div>
+        <div class="card stat" th:each="s : ${statuses}" th:classappend="${'stat-' + #strings.toLowerCase(s.name())}">
+            <a th:href="@{/recipes(status=${s.name()})}">
+                <div class="value" th:id="'count-' + ${s.name()}" th:text="${summary.count(s)}">0</div>
+            </a>
+            <div class="label" th:text="${s.label}">Status</div>
+        </div>
+    </div>
+
+    <div class="grid-2 section-gap">
+        <section class="card">
+            <h2>Top categories</h2>
+            <p class="muted" th:if="${#lists.isEmpty(summary.topCategories)}">No data yet.</p>
+            <ul id="top-categories" class="bar-list">
+                <li th:each="c : ${summary.topCategories}" class="top-category">
+                    <div class="bar-label">
+                        <a class="name" th:href="@{/recipes(category=${c.name})}" th:text="${c.name}">Category</a>
+                        <span class="count" th:text="${c.count}">0</span>
+                    </div>
+                    <div class="bar"><span th:style="'width:' + ${summary.totalRecipes == 0 ? 0 : c.count * 100 / summary.totalRecipes} + '%'"></span></div>
+                </li>
+            </ul>
+        </section>
+        <section class="card">
+            <h2>Top cuisines</h2>
+            <p class="muted" th:if="${#lists.isEmpty(summary.topCuisines)}">No data yet.</p>
+            <ul id="top-cuisines" class="bar-list">
+                <li th:each="c : ${summary.topCuisines}" class="top-cuisine">
+                    <div class="bar-label">
+                        <a class="name" th:href="@{/recipes(cuisine=${c.name})}" th:text="${c.name}">Cuisine</a>
+                        <span class="count" th:text="${c.count}">0</span>
+                    </div>
+                    <div class="bar"><span th:style="'width:' + ${summary.totalRecipes == 0 ? 0 : c.count * 100 / summary.totalRecipes} + '%'"></span></div>
+                </li>
+            </ul>
+        </section>
+    </div>
+
+    <section class="card section-gap">
+        <h2>Waiting for review</h2>
+        <p id="review-queue-empty" class="muted" th:if="${#lists.isEmpty(reviewQueue)}">Nothing is waiting for review.</p>
+        <table id="review-queue" class="table" th:unless="${#lists.isEmpty(reviewQueue)}">
+            <thead><tr><th>Title</th><th>Cuisine</th><th>Author</th><th>Submitted</th></tr></thead>
+            <tbody>
+            <tr th:each="r : ${reviewQueue}">
+                <td><a th:href="@{/recipes/{id}(id=${r.id})}" th:text="${r.title}">Title</a></td>
+                <td th:text="${r.cuisine}">Cuisine</td>
+                <td th:text="${r.createdBy}">author</td>
+                <td th:text="${#temporals.format(r.updatedAt, 'yyyy-MM-dd HH:mm')}">date</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

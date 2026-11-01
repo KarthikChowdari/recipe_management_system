@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Recipes')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav}"></header>
+<main class="container">
+    <div th:replace="~{fragments/layout :: flash}"></div>
+
+    <div class="page-header">
+        <h1>Recipes</h1>
+        <span id="result-count" class="muted" th:text="${page.totalElements} + ' recipe(s)'">0 recipe(s)</span>
+    </div>
+
+    <form id="search-form" class="card search-form" th:action="@{/recipes}" method="get">
+        <div>
+            <label for="search-title">Title</label>
+            <input id="search-title" name="title" type="search" placeholder="Search by title"
+                   th:value="${criteria.title}">
+        </div>
+        <div>
+            <label for="search-cuisine">Cuisine</label>
+            <select id="search-cuisine" name="cuisine">
+                <option value="">All cuisines</option>
+                <option th:each="c : ${cuisines}" th:value="${c}" th:text="${c}"
+                        th:selected="${c == criteria.cuisine}">Cuisine</option>
+            </select>
+        </div>
+        <div>
+            <label for="search-category">Category</label>
+            <select id="search-category" name="category">
+                <option value="">All categories</option>
+                <option th:each="c : ${categories}" th:value="${c}" th:text="${c}"
+                        th:selected="${c == criteria.category}">Category</option>
+            </select>
+        </div>
+        <div>
+            <label for="search-status">Status</label>
+            <select id="search-status" name="status">
+                <option value="">All statuses</option>
+                <option th:each="s : ${statuses}" th:value="${s.name()}" th:text="${s.label}"
+                        th:selected="${s == criteria.status}">Status</option>
+            </select>
+        </div>
+        <div class="actions" style="margin-top:0">
+            <button id="search-button" type="submit" class="btn btn-primary">Search</button>
+            <a id="reset-button" class="btn" th:href="@{/recipes}">Reset</a>
+        </div>
+    </form>
+
+    <p id="no-results" class="empty" th:if="${page.empty}">No recipes found.</p>
+
+    <table id="recipe-table" class="table" th:unless="${page.empty}">
+        <thead>
+        <tr><th>Title</th><th>Cuisine</th><th>Category</th><th>Status</th><th>Author</th><th>Updated</th></tr>
+        </thead>
+        <tbody>
+        <tr class="recipe-row" th:each="r : ${page.content}">
+            <td class="recipe-title"><a th:href="@{/recipes/{id}(id=${r.id})}" th:text="${r.title}">Title</a></td>
+            <td class="recipe-cuisine" th:text="${r.cuisine}">Cuisine</td>
+            <td class="recipe-category" th:text="${r.category}">Category</td>
+            <td class="recipe-status"><span th:replace="~{fragments/layout :: statusBadge(${r.status})}"></span></td>
+            <td th:text="${r.createdBy}">author</td>
+            <td th:text="${#temporals.format(r.updatedAt, 'yyyy-MM-dd HH:mm')}">date</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="pager" th:if="${page.totalPages > 1}">
+        <a th:if="${page.hasPrevious()}" th:href="@{/recipes(page=${page.number - 1},title=${criteria.title},cuisine=${criteria.cuisine},category=${criteria.category},status=${criteria.status})}">&laquo; Previous</a>
+        <span th:text="'Page ' + ${page.number + 1} + ' of ' + ${page.totalPages}">Page 1 of 1</span>
+        <a th:if="${page.hasNext()}" th:href="@{/recipes(page=${page.number + 1},title=${criteria.title},cuisine=${criteria.cuisine},category=${criteria.category},status=${criteria.status})}">Next &raquo;</a>
+    </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+---
+# Keeps the newest `keep_images` release images (plus stable/previous) so rollbacks stay offline-capable.
+- name: Remove old release images
+  ansible.builtin.shell: |
+    set -o pipefail
+    keep="$(cat {{ app_releases_dir }}/stable {{ app_releases_dir }}/previous 2>/dev/null | tr '\n' ' ')"
+    docker images {{ app_image_repo | quote }} --format '{% raw %}{{.Tag}}{% endraw %}' \
+      | grep -E '^[0-9]+$' | sort -rn | tail -n +{{ keep_images | int + 1 }} \
+      | while read -r tag; do
+          case " $keep " in *" $tag "*) continue ;; esac
+          docker rmi {{ app_image_repo | quote }}:"$tag" > /dev/null && echo "removed $tag"
+        done
+  args:
+    executable: /bin/bash
+  register: prune_result
+  changed_when: prune_result.stdout | length > 0
