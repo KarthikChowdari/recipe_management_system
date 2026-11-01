@@ -1,0 +1,91 @@
+---
+# Service account, folders, environment configuration and the systemd unit.
+- name: Create application group
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    system: true
+
+- name: Create application user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ app_base_dir }}"
+    create_home: false
+
+- name: Create application directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ app_base_dir }}", mode: "0755" }
+    - { path: "{{ app_releases_dir }}", mode: "0755" }
+    - { path: "{{ app_logs_dir }}", mode: "0750" }
+
+- name: Create configuration directory
+  ansible.builtin.file:
+    path: "{{ app_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Write container environment variables
+  ansible.builtin.template:
+    src: app.env.j2
+    dest: "{{ app_config_dir }}/app.env"
+    owner: root
+    group: root
+    mode: "0600"
+  register: app_env_file
+  no_log: true          # contains passwords
+
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: recipe-app.service.j2
+    dest: "/etc/systemd/system/{{ app_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  register: app_unit_file
+
+- name: Reload systemd after unit changes
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: app_unit_file.changed  # noqa: no-handler - reload before the service is started below
+
+- name: Remember whether runtime configuration changed (forces a restart during deploy)
+  ansible.builtin.set_fact:
+    app_config_changed: "{{ app_env_file.changed or app_unit_file.changed }}"
+
+- name: Log in to the container registry
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USERNAME" --password-stdin {{ registry_url | quote }}
+  args:
+    executable: /bin/bash
+  environment:
+    REGISTRY_USERNAME: "{{ registry_username }}"
+    REGISTRY_PASSWORD: "{{ registry_password }}"
+  when: registry_login | bool
+  changed_when: false
+  no_log: true
+
+- name: Open the application port (ufw)
+  community.general.ufw:
+    rule: allow
+    port: "{{ app_port | string }}"
+    proto: tcp
+  when: configure_firewall | bool and ansible_os_family == "Debian"
+
+- name: Open the application port (firewalld)
+  ansible.posix.firewalld:
+    port: "{{ app_port }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+  when: configure_firewall | bool and ansible_os_family == "RedHat"

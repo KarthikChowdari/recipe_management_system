@@ -1,0 +1,24 @@
+---
+# JDK 21 runtime: used for diagnostics (jcmd/jstack) and to run the JAR directly if Docker is unavailable.
+- name: Install OpenJDK 21 (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name: "{{ jdk_package_debian }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install OpenJDK 21 (RHEL/Rocky/Alma)
+  ansible.builtin.dnf:
+    name: "{{ jdk_package_redhat }}"
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Check Java version
+  ansible.builtin.command: java -version
+  register: java_version
+  changed_when: false
+
+- name: Show Java version
+  ansible.builtin.debug:
+    msg: "{{ java_version.stderr_lines | first }}"

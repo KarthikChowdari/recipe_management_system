@@ -1,0 +1,98 @@
+---
+# Deploys app_version. If the health check fails, the previous stable release is reactivated
+# automatically (block/rescue) and the play fails so the pipeline reports the broken release.
+#
+# Release bookkeeping on each host ({{ app_releases_dir }}):
+#   stable       version currently known to be healthy
+#   previous     version that was stable before it (rollback target)
+#   history.log  one line per deploy / rollback
+- name: Read the current stable release
+  ansible.builtin.slurp:
+    src: "{{ app_releases_dir }}/stable"
+  register: stable_file
+  failed_when: false
+
+- name: Remember the release to fall back to
+  ansible.builtin.set_fact:
+    previous_stable: "{{ (stable_file.content | b64decode | trim) if stable_file.content is defined else '' }}"
+
+- name: Deployment plan
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}: {{ previous_stable | default('nothing', true) }} -> {{ app_version }} ({{ app_image }})"
+
+- name: Pull the new release image
+  ansible.builtin.command: docker pull {{ app_image }}
+  register: image_pull
+  changed_when: "'Downloaded newer image' in image_pull.stdout"
+  # A locally built image (no registry) is fine as long as it already exists on the host.
+  failed_when: false
+
+- name: Deploy with automatic rollback - {{ app_version }}
+  block:
+    - name: Activate the new release
+      ansible.builtin.import_tasks: activate_release.yml
+      vars:
+        release_version: "{{ app_version }}"
+        release_image: "{{ app_image }}"
+
+    - name: Record the previous stable release
+      ansible.builtin.copy:
+        content: "{{ previous_stable }}\n"
+        dest: "{{ app_releases_dir }}/previous"
+        mode: "0644"
+      when: previous_stable | length > 0 and previous_stable != app_version
+
+    - name: Mark as the stable release - {{ app_version }}
+      ansible.builtin.copy:
+        content: "{{ app_version }}\n"
+        dest: "{{ app_releases_dir }}/stable"
+        mode: "0644"
+      register: stable_marker
+
+    - name: Append to release history
+      ansible.builtin.lineinfile:
+        path: "{{ app_releases_dir }}/history.log"
+        line: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }} DEPLOY {{ previous_stable | default('-', true) }} -> {{ app_version }} OK"
+        create: true
+        mode: "0644"
+      when: stable_marker.changed  # noqa: no-handler - must run inside the block, before rescue
+
+  rescue:
+    - name: Report the failed release
+      ansible.builtin.debug:
+        msg: >-
+          Release {{ app_version }} failed on {{ inventory_hostname }}
+          ({{ ansible_failed_result.msg | default('health check failed') }}).
+          Rolling back to {{ previous_stable | default('<none>', true) }}.
+
+    - name: Show the last container logs
+      ansible.builtin.command: journalctl -u {{ app_name }} -n 60 --no-pager
+      register: failed_logs
+      changed_when: false
+      failed_when: false
+
+    - name: Container log tail
+      ansible.builtin.debug:
+        var: failed_logs.stdout_lines
+
+    - name: Stop if there is nothing to roll back to
+      ansible.builtin.fail:
+        msg: "First deployment of {{ app_version }} failed and no previous stable release exists."
+      when: previous_stable | length == 0
+
+    - name: Reactivate the previous stable release
+      ansible.builtin.import_tasks: activate_release.yml
+      vars:
+        release_version: "{{ previous_stable }}"
+        release_image: "{{ app_image_repo }}:{{ previous_stable }}"
+
+    - name: Append rollback to release history
+      ansible.builtin.lineinfile:
+        path: "{{ app_releases_dir }}/history.log"
+        line: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }} AUTO-ROLLBACK {{ app_version }} -> {{ previous_stable }}"
+        create: true
+        mode: "0644"
+
+    - name: Fail the play after a successful rollback
+      ansible.builtin.fail:
+        msg: "Deployment of {{ app_version }} failed its health check; {{ previous_stable }} was restored and is healthy."

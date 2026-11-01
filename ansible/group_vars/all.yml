@@ -1,0 +1,65 @@
+---
+# ---------------------------------------------------------------------------
+# Application identity and layout
+# ---------------------------------------------------------------------------
+app_name: recipe-app
+app_user: recipeapp
+app_group: recipeapp
+app_base_dir: /opt/recipe-app
+app_releases_dir: "{{ app_base_dir }}/releases"
+app_logs_dir: "{{ app_base_dir }}/logs"
+app_config_dir: /etc/recipe-app
+app_environment: staging
+
+# ---------------------------------------------------------------------------
+# Release to deploy. Jenkins passes the build number:  -e app_version=42
+# ---------------------------------------------------------------------------
+app_image_repo: docker.io/your-dockerhub-user/recipe-management-system
+app_version: latest
+app_image: "{{ app_image_repo }}:{{ app_version }}"
+
+# Host port -> container port 8080
+app_port: 8080
+app_container_port: 8080
+
+# ---------------------------------------------------------------------------
+# Runtime environment passed to the container (written to {{ app_config_dir }}/app.env, mode 0600)
+# ---------------------------------------------------------------------------
+app_java_opts: "-XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError"
+app_spring_profile: ""            # "mysql" to use MySQL
+app_db_url: ""
+app_db_username: ""
+app_db_password: ""               # put real values in an Ansible Vault file
+app_seed_data: "always"           # H2 default; use "never" with MySQL after the first deploy
+
+# Demo users. Override in group_vars/<env>/vault.yml (ansible-vault encrypt) for real environments.
+app_author_password: author123
+app_reviewer_password: reviewer123
+app_admin_password: admin123
+
+app_extra_env: {}                 # any additional KEY: value pairs
+
+# ---------------------------------------------------------------------------
+# Provisioning switches
+# ---------------------------------------------------------------------------
+install_jdk: true                 # JDK for diagnostics (jcmd, jstack) and running the JAR without Docker
+jdk_package_debian: openjdk-21-jre-headless
+jdk_package_redhat: java-21-openjdk-headless
+install_docker: true
+configure_firewall: false         # open app_port in ufw/firewalld
+
+# Private registry login (Docker Hub with a private repo, GHCR, ...)
+registry_login: false
+registry_url: docker.io
+registry_username: ""
+registry_password: ""             # vault!
+
+# ---------------------------------------------------------------------------
+# Health check and rollback
+# ---------------------------------------------------------------------------
+health_check_path: /actuator/health
+health_check_home_path: /login
+health_check_retries: 30
+health_check_delay: 5             # seconds between attempts -> 150 s budget
+keep_images: 5                    # release images kept on the host for rollback
+rollback_version: ""              # empty = previous stable release recorded on the host
